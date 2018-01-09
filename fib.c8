@@ -1,0 +1,14 @@
+function fib(n) {
+    a = 0;
+    b = 1;
+    c = 1;
+
+    t = a + c;
+    t = -a;
+    t = (a + b) - c;
+    t = a + (b + (- c));
+}
+
+function main() {
+
+}
