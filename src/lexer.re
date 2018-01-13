@@ -9,10 +9,8 @@
 #include "lexer.h"
 #include "utils.h"
 
-#define die(...) die_("lexer", __VA_ARGS__)
-
 #if 0
-/* string - string started with decDigits and not necessarily ended with zero byte. */
+/* string - string started with digit and not necessarily ended with zero byte. */
 static int
 strtoi(const char *string, char **endptr, int base) {
     char *endptr1;
@@ -32,9 +30,11 @@ strtoi(const char *string, char **endptr, int base) {
 #endif
 
 extern int
-lexerNextToken(char **cursor, union TokenData *data, uint_fast32_t *line) {
+lexer_next_token(char **cursor, union TokenData *data, uint_fast32_t *line) {
+    (void)data;
 restart:;
     char *token = *cursor;
+    (void)token;
     /*!re2c
     re2c:define:YYCTYPE     = char;
     re2c:define:YYCURSOR    = *cursor;
@@ -42,17 +42,16 @@ restart:;
     letter      = [a-zA-Z];
     decDigit    = [0-9];
     hexDigit    = (decDigit | [a-zA-Z]);
-    *           { die("Unknown token: \"%.5s\"", token); }
+    *           { return -1; }
     "\x00"      { return 0; }
     [ \t]+      { goto restart; }
     "\n"        { ++*line; goto restart; }
     "+"         { return PLUS_SIGN; }
     "-"         { return MINUS_SIGN; }
     "function"  { return KW_FUNCTION; }
-    "return"    { return KW_RETURN; }
+    "call"      { return KW_CALL; }
     "("         { return LEFT_PARENTHESES; }
     ")"         { return RIGHT_PARENTHESES; }
-    ","         { return COMMA; }
     ";"         { return SEMICOLON; }
     "="         { return EQUALS_SIGN; }
     "{"         { return LEFT_BRACES; }

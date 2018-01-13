@@ -1,0 +1,3 @@
+[submodule "lib/libc8asm"]
+	path = lib/libc8asm
+	url = https://github.com/NolanRus/libc8asm

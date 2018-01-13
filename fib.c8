@@ -1,4 +1,4 @@
-function fib(n) {
+function fib {
     a = 0;
     b = 1;
     c = 1;
@@ -9,6 +9,6 @@ function fib(n) {
     t = a + (b + (- c));
 }
 
-function main() {
-
+function main {
+    call fib;
 }
