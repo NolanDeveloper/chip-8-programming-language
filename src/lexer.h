@@ -1,5 +1,5 @@
 union TokenData {
-    int iValue;
+    uint_fast16_t iValue;
     char *sValue;
 };
 

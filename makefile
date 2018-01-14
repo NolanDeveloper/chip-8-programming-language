@@ -37,6 +37,7 @@ lib/libc8asm/libc8asm.a:
 OBJS += build/utils.o
 OBJS += build/lexer.o
 OBJS += build/parser.o
+OBJS += build/code_generation.o
 
 -include build/*.d
 

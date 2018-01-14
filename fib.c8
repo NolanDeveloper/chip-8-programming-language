@@ -4,9 +4,7 @@ function fib {
     c = 1;
 
     t = a + c;
-    t = -a;
     t = (a + b) - c;
-    t = a + (b + (- c));
 }
 
 function main {

@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stddef.h>
+#include <stdio.h>
 #include <assert.h>
 #include <limits.h>
 #include <string.h>
@@ -9,29 +11,26 @@
 #include "lexer.h"
 #include "utils.h"
 
-#if 0
 /* string - string started with digit and not necessarily ended with zero byte. */
-static int
-strtoi(const char *string, char **endptr, int base) {
-    char *endptr1;
-    long value = strtol(string, &endptr1, base);
-    if (endptr) *endptr = endptr1;
-    assert(endptr1 != string);
-    if (INT_MAX < value || value < INT_MIN) {
-        int l = endptr1 - string;
+static uint_fast16_t
+strtoi(const char *string, int base) {
+    char *endptr;
+    unsigned long value = strtoul(string, &endptr, base);
+    assert(endptr != string);
+    if (UINT_FAST16_MAX < value) {
+        int l = endptr - string;
         if (l < 20) {
-            die("%.*s is too big number", l, string);
+            fprintf(stderr, "%.*s is too big number", l, string);
         } else {
-            die("%.20s... is too big number", string);
+            fprintf(stderr, "%.20s... is too big number", string);
         }
+        exit(1);
     }
-    return (int)value;
+    return (uint_fast16_t)value;
 }
-#endif
 
 extern int
 lexer_next_token(char **cursor, union TokenData *data, uint_fast32_t *line) {
-    (void)data;
 restart:;
     char *token = *cursor;
     (void)token;
@@ -56,8 +55,22 @@ restart:;
     "="         { return EQUALS_SIGN; }
     "{"         { return LEFT_BRACES; }
     "}"         { return RIGHT_BRACES; }
-    letter (letter | decDigit)*
-                { return IDENTIFIER; }
-    decDigit+   { return INTEGER; }
+    letter (letter | decDigit)* {
+            ptrdiff_t l = *cursor - token;
+            assert(0 <= l);
+            if (20 < l) {
+                // Better return error code
+                fprintf(stderr, "Too long identifier");
+                exit(1);
+            }
+            char *name = malloc((size_t)l + 1);
+            strncpy(name, token, (size_t)l);
+            data->sValue = name;
+            return IDENTIFIER;
+        }
+    decDigit+ {
+            data->iValue = strtoi(token, 10);
+            return INTEGER;
+        }
     */
 }
