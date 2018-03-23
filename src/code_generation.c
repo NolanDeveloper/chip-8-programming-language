@@ -43,19 +43,19 @@ null_terminated_array_remove(void *array, const void *x, const void *null, size_
     memcpy(out, null, member_size);
 }
 
-#define DESCRIPTOR_SIZE     4
-
 enum Register {
     V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, VA, VB, VC, VD, VE, VF,
     REGISTER_MAX,
-    NULL_REGISTER = V0,
 };
+static enum Register null_register = V0;
+
+#define DESCRIPTOR_SIZE     4
 
 /* Registers V0 and VF are special.
  * V0 is only used for store and load operations.
  * VF is only used as flag register for some instructions. */
 struct AddressDescriptor {
-    bool            is_in_memory; /* Can actual value of variable be found in memory. */
+    bool            is_in_memory; /* Can actual value of variable be found in memory? */
     enum Register   registers[DESCRIPTOR_SIZE];
                                   /* Registers which hold actual value of the variable.
                                    * 0 is end of list. */
@@ -63,8 +63,8 @@ struct AddressDescriptor {
 
 static void
 address_descriptor_add_register(struct AddressDescriptor *ad, enum Register r) {
-    enum Register null = NULL_REGISTER;
-    null_terminated_array_add(ad->registers, &r, &null, DESCRIPTOR_SIZE, sizeof(enum Register));
+    null_terminated_array_add(
+        ad->registers, &r, &null_register, DESCRIPTOR_SIZE, sizeof(enum Register));
 }
 
 struct Variable {
@@ -73,17 +73,17 @@ struct Variable {
 };
 
 #define MAX_VARIABLES               512
-#define NULL_VARIABLE               MAX_VARIABLES
 
 struct RegisterDescriptor {
     size_t variables[DESCRIPTOR_SIZE]; /* Variables which hold actual value in the register.
                                         * MAX_VARIABLES is end of list. */
 };
+static size_t null_variable = MAX_VARIABLES;
 
 static void
 register_descriptor_add_variable(struct RegisterDescriptor *rd, size_t x) {
-    size_t null = NULL_VARIABLE;
-    null_terminated_array_add(rd->variables, &x, &null, DESCRIPTOR_SIZE, sizeof(size_t));
+    null_terminated_array_add(
+        rd->variables, &x, &null_variable, DESCRIPTOR_SIZE, sizeof(size_t));
 }
 
 static struct Variable              variables[MAX_VARIABLES];
@@ -103,7 +103,7 @@ cg_init(void) {
     asm_init();
     number_of_variables = 0;
     for (enum Register r = V1; r <= VE; ++r) {
-        registers[r].variables[0] = NULL_VARIABLE;
+        registers[r].variables[0] = null_variable;
     }
     number_of_symbols = 0;
     for (size_t i = 0; i < TABLE_SIZE; ++i) {
@@ -165,7 +165,7 @@ cg_make_variable(char *name) {
         variables[v].name = alloc_printf("~%zx", v);
     }
     variables[v].descriptor.is_in_memory = true;
-    variables[v].descriptor.registers[0] = NULL_REGISTER;
+    variables[v].descriptor.registers[0] = null_register;
     return v;
 }
 
@@ -173,7 +173,7 @@ static void
 generate_store(enum Register r, size_t x) {
     /* Save value of variable x from register r into memory with spectacular
      * efficiency. */
-    asm_emit_ld_vx_vy(r, V0);
+    asm_emit_ld_vx_vy(V0, r);
     asm_emit_ld_i_label(variables[x].name);
     asm_emit_ld_ii_vx(V0);
     /* Update descriptor. */
@@ -189,7 +189,7 @@ generate_load(size_t x, enum Register r) {
     asm_emit_ld_vx_vy(V0, r);
     /* Update descriptors. */
     registers[r].variables[0] = x;
-    registers[r].variables[1] = NULL_VARIABLE;
+    registers[r].variables[1] = null_variable;
     address_descriptor_add_register(&variables[x].descriptor, r);
 }
 
@@ -197,9 +197,9 @@ static void
 get_register(size_t x, enum Register *rx) {
     /* If x is alreay in some register return this register. */
     struct AddressDescriptor *d = &variables[x].descriptor;
-    if (NULL_REGISTER != d->registers[0]) {
+    if (null_register != d->registers[0]) {
         *rx = d->registers[0];
-        for (size_t i = 0; NULL_REGISTER != d->registers[i]; ++i) {
+        for (size_t i = 0; null_register != d->registers[i]; ++i) {
             d->registers[i] = d->registers[i + 1];
         }
         return;
@@ -209,7 +209,7 @@ get_register(size_t x, enum Register *rx) {
     size_t          min_count = DESCRIPTOR_SIZE;
     for (enum Register r = V1; r <= VE && min_count; ++r) {
         size_t count = 0;
-        while (NULL_VARIABLE != registers[r].variables[count]) ++count;
+        while (null_variable != registers[r].variables[count]) ++count;
         if (min_count < count) continue;
         min_count   = count;
         min_r       = r;
@@ -217,15 +217,14 @@ get_register(size_t x, enum Register *rx) {
     *rx = min_r;
     /* Make sure values of the variables in this register aren't lost. */
     if (!min_count) return;
-    for (size_t v = 0; NULL_VARIABLE != registers[min_r].variables[v]; ++v) {
+    for (size_t v = 0; null_variable != registers[min_r].variables[v]; ++v) {
         /* If v resides somewhere else it's not lost. */
         d = &variables[x].descriptor;
         if (d->is_in_memory) continue;
         if (d->registers[0] != min_r) continue;
-        if (NULL_REGISTER != d->registers[1] && min_r != d->registers[1]) continue;
-        /* Two pass compiler could check if v is not used anymore to avoid
-         * generating unnecessary stores. But I'm too lazy and this sounds like
-         * a work. */
+        if (null_register != d->registers[1] && min_r != d->registers[1]) continue;
+        /* ToDo: Two pass compiler could check if v is not used anymore to
+         * avoid generating unnecessary stores. */
         generate_store(min_r, x);
     }
 }
@@ -235,7 +234,7 @@ is_in_register(size_t x, enum Register r) {
     size_t v, i = 0;
     for (;;) {
         v = registers[r].variables[i];
-        if (NULL_VARIABLE == v) return false;
+        if (null_variable == v) return false;
         if (x == v) return true;
         ++i;
     }
@@ -249,11 +248,11 @@ cg_emit_operation(enum OperationType operation, size_t x, size_t y) {
     if (OP_ASSIGN == operation) {
         get_register(y, &ry);
         if (!is_in_register(y, ry)) generate_load(y, ry);
-        /* Update registers. */
+        /* Update descriptors. */
         register_descriptor_add_variable(&registers[ry], x);
         variables[x].descriptor.is_in_memory = false;
         variables[x].descriptor.registers[0] = ry;
-        variables[x].descriptor.registers[1] = NULL_REGISTER;
+        variables[x].descriptor.registers[1] = null_register;
     } else {
         get_register(x, &rx);
         get_register(y, &ry);
@@ -268,14 +267,14 @@ cg_emit_operation(enum OperationType operation, size_t x, size_t y) {
         }
         /* Update descriptors. */
         registers[rx].variables[0] = x;
-        registers[rx].variables[1] = NULL_VARIABLE;
+        registers[rx].variables[1] = null_variable;
         variables[x].descriptor.is_in_memory = false;
         variables[x].descriptor.registers[0] = rx;
-        variables[x].descriptor.registers[1] = NULL_REGISTER;
+        variables[x].descriptor.registers[1] = null_register;
         for (size_t i = 0; i < number_of_variables; ++i) {
             if (x == i) continue;
             void *array         = variables[x].descriptor.registers;
-            enum Register null  = NULL_REGISTER;
+            enum Register null  = null_register;
             null_terminated_array_remove(array, &rx, &null, sizeof(enum Register));
         }
     }
@@ -288,10 +287,10 @@ cg_emit_assign_constant(size_t x, uint_fast16_t constant) {
     asm_emit_ld_vx_byte(rx, constant);
     /* Update descriptor. */
     registers[rx].variables[0] = x;
-    registers[rx].variables[1] = NULL_VARIABLE;
+    registers[rx].variables[1] = null_variable;
     variables[x].descriptor.is_in_memory = false;
     variables[x].descriptor.registers[0] = rx;
-    variables[x].descriptor.registers[1] = NULL_REGISTER;
+    variables[x].descriptor.registers[1] = null_register;
 }
 
 extern void

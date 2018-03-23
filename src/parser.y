@@ -166,6 +166,7 @@ int main(int argc, char *argv[]) {
     void *parse = ParseAlloc(malloc);
     struct Token token;
     cg_init();
+    cg_emit_call_label("main");
     while (0 < (token.type = lexer_next_token(&cursor, &token.data, &line))) {
         Parse(parse, token.type, token.data);
     }
