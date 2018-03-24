@@ -90,6 +90,7 @@ void t_check(size_t n, ...) {
         int x = va_arg(args, int);
         ASSERT_MSG(t_lookup(x), "x = %i\n", x);
     }
+    va_end(args);
 }
 
 int main() {
