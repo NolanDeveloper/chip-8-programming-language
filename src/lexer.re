@@ -11,6 +11,9 @@
 #include "lexer.h"
 #include "utils.h"
 
+#define ALLOCATE    malloc
+#define FREE        free
+
 /* string - string started with digit and not necessarily ended with zero byte. */
 static uint_fast16_t
 strtoi(const char *string, int base) {
@@ -29,7 +32,7 @@ strtoi(const char *string, int base) {
     return (uint_fast16_t)value;
 }
 
-extern int
+int
 lexer_next_token(char **cursor, union TokenData *data, uint_fast32_t *line) {
 restart:;
     char *token = *cursor;
@@ -63,7 +66,7 @@ restart:;
                 fprintf(stderr, "Too long identifier");
                 exit(1);
             }
-            char *name = malloc((size_t)l + 1);
+            char *name = ALLOCATE((size_t)l + 1);
             strncpy(name, token, (size_t)l);
             data->sValue = name;
             return IDENTIFIER;
@@ -73,4 +76,12 @@ restart:;
             return INTEGER;
         }
     */
+}
+
+void 
+lexer_free_token(struct Token *token) {
+    switch (token->type) {
+    default:            break;
+    case IDENTIFIER:    FREE(token->data.sValue); break;
+    }
 }

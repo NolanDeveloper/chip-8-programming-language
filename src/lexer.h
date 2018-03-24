@@ -8,4 +8,5 @@ struct Token {
     union TokenData data;
 };
 
-extern int lexer_next_token(char **cursor, union TokenData *data, uint_fast32_t *line);
+int lexer_next_token(char **cursor, union TokenData *data, uint_fast32_t *line);
+void lexer_free_token(struct Token *token);

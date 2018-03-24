@@ -18,8 +18,23 @@ OBJS += build/parser.o
 OBJS += build/code_generation.o
 OBJS += build/tiny_set.o
 
+# Find all source file containing macro TESTING. You can test any source file
+# with this technique. Just add '#ifdef TESTING' section to the end of it and
+# write main function. If main returns 0 the test is considered to be passed.
+# Otherwise it's considered failed. The file will be compiled separately with
+# this macro defined.
+TESTS := $(shell \
+    find src -name "*.c" \
+        -exec sh -c "grep 'TESTING' '{}' > /dev/null 2>&1" \; \
+        -print)
+
+TEST_TARGETS := $(patsubst src/%.c, test-%, $(TESTS))
+
 .PHONY: all
 all: build/c8c
+
+build/c8c: $(OBJS) $(LIBS)
+	$(CC) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
 .PHONY: clean
 clean:
@@ -27,17 +42,30 @@ clean:
 	$(MAKE) -C lib/libc8asm clean
 
 .PHONY: test
-test: test-tiny_set
+test: $(TEST_TARGETS)
 	@echo "======= TESTS =======" ;                                     \
-	for test in ./build/*_test ; do                                     \
+	total=0 ; passed=0 ; failed=0 ;                                     \
+	for test in ./build/*_test ;                                        \
+    do                                                                  \
 	    test_name=`echo $$test | sed "s/\.\/build\/\(.*\)_test/\1/"` ;  \
 	    echo -n "$$test_name: " ;                                       \
-	    if $$test ; then echo "PASS" ; else echo "FAIL" ; fi            \
+	    if $$test ;                                                     \
+	    then                                                            \
+	        echo "PASS" ;                                               \
+	        passed=$$((passed + 1)) ;                                   \
+	    else                                                            \
+	        echo "FAIL" ;                                               \
+	        failed=$$((failed + 1)) ;                                   \
+	    fi                                                              \
 	done ;                                                              \
-	echo "======= TESTS ======="  ;
+	echo "****** Summary ******" ;                                      \
+	echo "passed:" $$passed ;                                           \
+	echo "failed:" $$failed ;                                           \
+	echo "total:" $$((passed + failed)) ;                               \
+	echo "======= TESTS =======" ;
 
-.PHONY: test-tiny_set
-test-tiny_set: build/tiny_set_test
+.PHONY: $(TEST_TARGETS)
+$(TEST_TARGETS): test-%: build/%_test
 
 build/%.o: build/%.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
@@ -63,9 +91,6 @@ lib/libc8asm/libc8asm.a:
 	$(MAKE) -C lib/libc8asm
 
 build/lexer.o: build/parser.c
-
-build/c8c: $(OBJS) $(LIBS)
-	$(CC) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
 -include build/*.d
 

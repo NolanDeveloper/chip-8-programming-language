@@ -61,7 +61,7 @@ tiny_set_size(struct TinySet *ts) {
     return ts->size;
 }
 
-#if TESTING
+#ifdef TESTING
 
 struct TinySet ts;
 

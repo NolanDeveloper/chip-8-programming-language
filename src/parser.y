@@ -15,6 +15,9 @@
 #include "lexer.h"
 #include "code_generation.h"
 
+#define ALLOCATE        malloc
+#define FREE            free
+
 static uint_fast32_t    line = 1;
 static uint_fast32_t    number_of_errors = 0;
 static const char       *output_file_path;
@@ -163,12 +166,13 @@ int main(int argc, char *argv[]) {
     load_file(argv[1], buffer, BUFFER_SIZE);
     output_file_path = argv[2];
     char *cursor = buffer;
-    void *parse = ParseAlloc(malloc);
+    void *parse = ParseAlloc(ALLOCATE);
     struct Token token;
     cg_init();
     cg_emit_call_label("main");
     while (0 < (token.type = lexer_next_token(&cursor, &token.data, &line))) {
         Parse(parse, token.type, token.data);
+        lexer_free_token(&token);
     }
     if (token.type < 0) {
         fprintf(stderr, "unknown token: %.5s\n", cursor);
