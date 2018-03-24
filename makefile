@@ -16,7 +16,7 @@ OBJS += build/utils.o
 OBJS += build/lexer.o
 OBJS += build/parser.o
 OBJS += build/code_generation.o
-OBJS += build/null_terminated_array.o
+OBJS += build/tiny_set.o
 
 .PHONY: all
 all: build/c8c
@@ -27,7 +27,7 @@ clean:
 	$(MAKE) -C lib/libc8asm clean
 
 .PHONY: test
-test: test-null_terminated_array
+test: test-tiny_set
 	@echo "======= TESTS ======= " ;                                    \
 	for test in ./build/*_test ; do                                     \
 	    test_name=`echo $$test | sed "s/\.\/build\/\(.*\)_test/\1/"` ;  \
@@ -36,8 +36,8 @@ test: test-null_terminated_array
 	done ;                                                              \
 	echo "======= TESTS ======="  ;
 
-.PHONY: test-null_terminated_array
-test-null_terminated_array: build/null_terminated_array_test
+.PHONY: test-tiny_set
+test-tiny_set: build/tiny_set_test
 
 build/%.o: build/%.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
