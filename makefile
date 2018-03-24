@@ -18,11 +18,11 @@ OBJS += build/parser.o
 OBJS += build/code_generation.o
 OBJS += build/tiny_set.o
 
-# Find all source file containing macro TESTING. You can test any source file
-# with this technique. Just add '#ifdef TESTING' section to the end of it and
-# write main function. If main returns 0 the test is considered to be passed.
-# Otherwise it's considered failed. The file will be compiled separately with
-# this macro defined.
+# Find all source files containing macro TESTING. The files will be compiled
+# separately with this macro defined in order to perform testing. With this
+# technique you can unit test any source file. Just add '#ifdef TESTING'
+# section with main function in the end. Test is considered passed if and only
+# if main returns 0 Otherwise it's considered failed. 
 TESTS := $(shell \
     find src -name "*.c" \
         -exec sh -c "grep 'TESTING' '{}' > /dev/null 2>&1" \; \
