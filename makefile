@@ -22,7 +22,7 @@ OBJS += build/tiny_set.o
 # separately with this macro defined in order to perform testing. With this
 # technique you can unit test any source file. Just add '#ifdef TESTING'
 # section with main function in the end. Test is considered passed if and only
-# if main returns 0 Otherwise it's considered failed. 
+# if main returns 0. Otherwise it's considered failed. 
 TESTS := $(shell \
     find src -name "*.c" \
         -exec sh -c "grep 'TESTING' '{}' > /dev/null 2>&1" \; \
