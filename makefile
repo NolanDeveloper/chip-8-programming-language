@@ -28,7 +28,7 @@ clean:
 
 .PHONY: test
 test: test-tiny_set
-	@echo "======= TESTS ======= " ;                                    \
+	@echo "======= TESTS =======" ;                                     \
 	for test in ./build/*_test ; do                                     \
 	    test_name=`echo $$test | sed "s/\.\/build\/\(.*\)_test/\1/"` ;  \
 	    echo -n "$$test_name: " ;                                       \
@@ -48,8 +48,9 @@ build/%.o: src/%.c
 build/%_test: build/%_test.o
 	$(CC) $^ -o $@ 
 
-build/%_test.o: src/%.c
-	$(CC) -g -Wall -Wextra -DTESTING -c $< -o $@
+build/%_test.o: CPPFLAGS+=-DTESTING
+build/%_test.o: src/%.c 
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 build/%.c: src/%.y
 	ln -fT $< $(patsubst %.c, %.y, $@)
