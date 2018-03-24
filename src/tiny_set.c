@@ -73,56 +73,40 @@ size_t t_size()         { return tiny_set_size(&ts); }
 bool t_lookup(int x)    { return tiny_set_lookup(&ts, &x); }
 
 #include <stdio.h>
+#include <stdarg.h>
 
-#define ASSERT(c) if (!(c)) { printf(__FILE__ ":%i: (" #c ") is not true.\n", __LINE__); exit(1); }
+#define ASSERT_MSG(c, ...) \
+    if (!(c)) { \
+        printf(__FILE__ ":%i: (" #c ") is not true.\n", __LINE__); \
+        printf(__VA_ARGS__); \
+        exit(1); \
+    }
+
+void t_check(size_t n, ...) { 
+    va_list args;
+    ASSERT_MSG(n == t_size(), "t_size() = %zu\n", t_size())
+    va_start(args, n);
+    for (size_t i = 0; i < n; ++i) {
+        int x = va_arg(args, int);
+        ASSERT_MSG(t_lookup(x), "x = %i\n", x);
+    }
+}
 
 int main() {
-    t_init();
-    ASSERT(0 == t_size())
-    t_add(1);
-    ASSERT(1 == t_size())
-    ASSERT(t_lookup(1))
-    t_add(2);
-    ASSERT(2 == t_size())
-    ASSERT(t_lookup(1))
-    ASSERT(t_lookup(2))
-    t_add(3);
-    ASSERT(3 == t_size())
-    ASSERT(t_lookup(1))
-    ASSERT(t_lookup(2))
-    ASSERT(t_lookup(3))
-    t_add(4);
-    ASSERT(4 == t_size())
-    ASSERT(t_lookup(1))
-    ASSERT(t_lookup(2))
-    ASSERT(t_lookup(3))
-    ASSERT(t_lookup(4))
-    t_add(5);
-    ASSERT(4 == t_size())
-    ASSERT(t_lookup(2))
-    ASSERT(t_lookup(3))
-    ASSERT(t_lookup(4))
-    ASSERT(t_lookup(5))
-    t_remove(6);
-    ASSERT(4 == t_size())
-    ASSERT(t_lookup(2))
-    ASSERT(t_lookup(3))
-    ASSERT(t_lookup(4))
-    ASSERT(t_lookup(5))
-    t_remove(5);
-    ASSERT(3 == t_size())
-    ASSERT(t_lookup(2))
-    ASSERT(t_lookup(3))
-    ASSERT(t_lookup(4))
-    t_remove(2);
-    ASSERT(2 == t_size())
-    ASSERT(t_lookup(3))
-    ASSERT(t_lookup(4))
-    t_remove(3);
-    ASSERT(1 == t_size())
-    ASSERT(t_lookup(4))
-    t_remove(4);
-    ASSERT(0 == t_size())
+    t_init(); t_check(0);
+    t_add(1); t_check(1, 1);
+    t_add(2); t_check(2, 1, 2);
+    t_add(3); t_check(3, 1, 2, 3);
+    t_add(4); t_check(4, 1, 2, 3, 4);
+    t_add(5); t_check(4, 2, 3, 4, 5);
+    t_remove(6); t_check(4, 2, 3, 4, 5);
+    t_remove(5); t_check(3, 2, 3, 4);
+    t_remove(2); t_check(2, 3, 4);
+    t_add(7); t_check(3, 3, 4, 7);
+    t_remove(3); t_check(2, 4, 7);
+    t_remove(4); t_check(1, 7);
+    t_remove(7); t_check(0);
+    t_remove(7); t_check(0);
     t_finish();
 }
 
