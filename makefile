@@ -46,7 +46,7 @@ test: $(TEST_TARGETS)
 	@echo "======= TESTS =======" ;                                     \
 	total=0 ; passed=0 ; failed=0 ;                                     \
 	for test in ./build/*_test ;                                        \
-    do                                                                  \
+	do                                                                  \
 	    test_name=`echo $$test | sed "s/\.\/build\/\(.*\)_test/\1/"` ;  \
 	    echo -n "$$test_name: " ;                                       \
 	    if $$test ;                                                     \
