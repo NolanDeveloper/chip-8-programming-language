@@ -11,9 +11,6 @@
 #include "lexer.h"
 #include "utils.h"
 
-#define ALLOCATE    malloc
-#define FREE        free
-
 /* string - string started with digit and not necessarily ended with zero byte. */
 static uint_fast16_t
 strtoi(const char *string, int base) {
@@ -36,7 +33,6 @@ int
 lexer_next_token(char **cursor, union TokenData *data, uint_fast32_t *line) {
 restart:;
     char *token = *cursor;
-    (void)token;
     /*!re2c
     re2c:define:YYCTYPE     = char;
     re2c:define:YYCURSOR    = *cursor;
@@ -66,7 +62,7 @@ restart:;
                 fprintf(stderr, "Too long identifier");
                 exit(1);
             }
-            char *name = ALLOCATE((size_t)l + 1);
+            char *name = malloc((size_t)l + 1);
             strncpy(name, token, (size_t)l);
             data->sValue = name;
             return IDENTIFIER;
@@ -82,6 +78,28 @@ void
 lexer_free_token(struct Token *token) {
     switch (token->type) {
     default:            break;
-    case IDENTIFIER:    FREE(token->data.sValue); break;
+    case IDENTIFIER:    free(token->data.sValue); break;
     }
 }
+
+#ifdef TESTING
+
+#include <stdlib.h>
+#include <stdint.h>
+
+#include "utils.h"
+
+void 
+check(char *token, int expected_type) {
+    uint_fast32_t line = rand(), next_line = line + 1; 
+    union TokenData data;
+    int type = lexer_next_token(&line, &data, &line);
+    ASSERT_MSG(expected_type == type, "\texpected_type = %s\n\ttype = %s\n", 
+        token_to_string(expected_type), token_to_string(type));
+}
+
+int main() {
+    check("42", INTEGER);
+}
+
+#endif

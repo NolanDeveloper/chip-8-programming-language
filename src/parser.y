@@ -1,3 +1,6 @@
+/* This is grammar of the language. 
+ * ATTENTION: Every time you want to add new token i.e. terminal symbol you
+ * should update lexer_type_to_string function in 'lexer.re'. */
 %include {
 
 #include <stdlib.h>
@@ -14,9 +17,6 @@
 #include "utils.h"
 #include "lexer.h"
 #include "code_generation.h"
-
-#define ALLOCATE        malloc
-#define FREE            free
 
 static uint_fast32_t    line = 1;
 static uint_fast32_t    number_of_errors = 0;
@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
     load_file(argv[1], buffer, BUFFER_SIZE);
     output_file_path = argv[2];
     char *cursor = buffer;
-    void *parse = ParseAlloc(ALLOCATE);
+    void *parse = ParseAlloc(malloc);
     struct Token token;
     cg_init();
     cg_emit_call_label("main");

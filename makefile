@@ -1,96 +1,116 @@
 .SUFFIXES:
-.PRECIOUS: build/%.c
 
-LIBS :=
-
-LIBS += lib/libc8asm/libc8asm.a
-CPPFLAGS += -Ilib/libc8asm
-LDFLAGS += -Llib/libc8asm
-LDLIBS += -lc8asm
-
-CFLAGS += -g -std=c99 -pedantic -Wall -Wextra -Werror -MMD
+CFLAGS   += -g -std=c99 -pedantic -Wall -Wextra -Werror 
 CPPFLAGS += -Isrc -Ibuild
-
-OBJS :=
-OBJS += build/utils.o
-OBJS += build/lexer.o
-OBJS += build/parser.o
-OBJS += build/code_generation.o
-OBJS += build/tiny_set.o
-
-# Find all source files containing macro TESTING. The files will be compiled
-# separately with this macro defined in order to perform testing. With this
-# technique you can unit test any source file. Just add '#ifdef TESTING'
-# section with main function in the end. Test is considered passed if and only
-# if main returns 0. Otherwise it's considered failed. 
-TESTS := $(shell \
-    find src -name "*.c" \
-        -exec sh -c "grep 'TESTING' '{}' > /dev/null 2>&1" \; \
-        -print)
-
-TEST_TARGETS := $(patsubst src/%.c, test-%, $(TESTS))
 
 .PHONY: all
 all: build/c8c
 
-build/c8c: $(OBJS) $(LIBS)
-	$(CC) $^ -o $@ $(LDFLAGS) $(LDLIBS)
-
 .PHONY: clean
 clean:
-	find ./build ! -name '.gitignore' -and ! -path './build' -exec $(RM) -rf '{}' \;
+	rm -rf build
 	$(MAKE) -C lib/libc8asm clean
 
 .PHONY: test
-test: $(TEST_TARGETS)
-	@echo "======= TESTS =======" ;                                     \
-	total=0 ; passed=0 ; failed=0 ;                                     \
-	for test in ./build/*_test ;                                        \
-	do                                                                  \
-	    test_name=`echo $$test | sed "s/\.\/build\/\(.*\)_test/\1/"` ;  \
-	    echo -n "$$test_name: " ;                                       \
-	    if $$test ;                                                     \
-	    then                                                            \
-	        echo "PASS" ;                                               \
-	        passed=$$((passed + 1)) ;                                   \
-	    else                                                            \
-	        echo "FAIL" ;                                               \
-	        failed=$$((failed + 1)) ;                                   \
-	    fi                                                              \
-	done ;                                                              \
-	echo "****** Summary ******" ;                                      \
-	echo "passed:" $$passed ;                                           \
-	echo "failed:" $$failed ;                                           \
-	echo "total:" $$((passed + failed)) ;                               \
-	echo "======= TESTS =======" ;
+test: test-all
 
-.PHONY: $(TEST_TARGETS)
-$(TEST_TARGETS): test-%: build/%_test
+#####################################################################
+### Rules for c files
+#####################################################################
 
-build/%.o: build/%.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+C_FILES   := $(shell find src -name "*.c")
+O_C_FILES := $(patsubst src/%.c,build/%.o,$(C_FILES))
 
-build/%.o: src/%.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+COMPILE_C = $(CC) $(CPPFLAGS) $(CFLAGS) -MMD -c $< -o $@
 
-build/%_test: build/%_test.o
-	$(CC) $^ -o $@ 
+$(O_C_FILES): build/%.o: src/%.c | dirs
+	$(COMPILE_C)
 
-build/%_test.o: CPPFLAGS+=-DTESTING
-build/%_test.o: src/%.c 
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+#####################################################################
+### Rules for Lemon parser files
+#####################################################################
 
-build/%.c: src/%.y
-	ln -fT $< $(patsubst %.c, %.y, $@)
-	lemon -q $(patsubst %.c, %.y, $@)
+Y_FILES       := $(shell find src -name "*.y")
+C_Y_FILES     := $(patsubst src/%.y,build/%.c,$(Y_FILES))
+O_Y_FILES     := $(C_Y_FILES:.c=.o)
+H_Y_FILES     := $(C_Y_FILES:.c=.h)
+BUILD_Y_FILES := $(C_Y_FILES:.c=.y)
 
-build/%.c: src/%.re
-	re2c $< -o $@
+$(H_Y_FILES): %.h: %.c | dirs
 
-lib/libc8asm/libc8asm.a:
+$(BUILD_Y_FILES): build/%.y: src/%.y | dirs
+	ln -s ../$< $@
+
+$(C_Y_FILES): %.c: %.y | dirs
+	lemon -q $<
+
+$(O_Y_FILES): %.o: %.c | dirs
+	$(COMPILE_C)
+
+#####################################################################
+### Rules for re2c files
+#####################################################################
+
+RE_FILES   := $(shell find src -name "*.re")
+C_RE_FILES := $(patsubst src/%.re,build/%.c,$(RE_FILES))
+O_RE_FILES := $(C_RE_FILES:.c=.o)
+
+$(C_RE_FILES): build/%.c: src/%.re | dirs
+	re2c $< -o $@ 
+
+$(O_RE_FILES): %.o: %.c | dirs
+	$(COMPILE_C)
+
+#####################################################################
+### Libraries
+#####################################################################
+
+LIBS     += lib/libc8asm/libc8asm.a
+CPPFLAGS += -Ilib/libc8asm
+LDFLAGS  += -Llib/libc8asm
+LDLIBS   += -lc8asm
+
+lib/libc8asm/libc8asm.a: | dirs
 	$(MAKE) -C lib/libc8asm
 
-build/lexer.o: build/parser.c
+#####################################################################
+### Output executable
+#####################################################################
 
--include build/*.d
+SRCS := $(C_FILES) $(Y_FILES) $(RE_FILES)
+OBJS := $(patsubst src/%,build/%.o,$(basename $(SRCS)))
 
+LINK = $(CC) $(filter %.o,$^) -o $@ $(LDFLAGS) $(LDLIBS) 
+
+build/c8c: $(OBJS) $(LIBS) | dirs
+	$(LINK)
+
+.PHONY: dirs
+dirs:
+	mkdir -p $(sort $(dir $(OBJS)))
+
+#####################################################################
+### Test executables
+#####################################################################
+
+# ToDo: how to test .re2c and .y files?
+
+C_TEST_FILES   := $(shell find tests -name "*.c")
+O_TEST_FILES   := $(patsubst tests/%.c,build/tests/%.o,$(C_TEST_FILES))
+EXE_TEST_FILES := $(O_TEST_FILES:.o=.test)
+
+$(O_TEST_FILES): CPPFLAGS+=-I$(patsubst build/tests/%,src/%,$(dir $@))
+$(O_TEST_FILES): build/tests/%.o: tests/%.c | test_dirs 
+	$(COMPILE_C)
+
+$(EXE_TEST_FILES): %.test: %.o $(LIBS) | test_dirs
+	$(LINK)
+
+test-all: $(EXE_TEST_FILES)
+	./runtests.sh
+
+.PHONY: test_dirs
+test_dirs:
+	mkdir -p $(sort $(dir $(O_TEST_FILES)))
+
+-include $(patsubst %.o,%.d,$(OBJS))
