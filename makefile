@@ -3,16 +3,29 @@
 CFLAGS   += -g -std=c99 -pedantic -Wall -Wextra -Werror 
 CPPFLAGS += -Isrc -Ibuild
 
+#####################################################################
+### First run rules
+#####################################################################
+
+# Dependency files are built in the first run if required. 
+# clean for example doesn't require to build dependecy files.
+
 .PHONY: all
-all: build/c8c
+all:
+	$(MAKE) build/c8c SECOND_RUN:=true
+
+.PHONY: check
+check: 
+	$(MAKE) check-all SECOND_RUN:=true
 
 .PHONY: clean
 clean:
 	rm -rf build
 	$(MAKE) -C lib/libc8asm clean
 
-.PHONY: test
-test: test-all
+#####################################################################
+### Second run rules
+#####################################################################
 
 #####################################################################
 ### Rules for c files
@@ -104,8 +117,8 @@ $(O_TEST_FILES): build/tests/%.o: tests/%.c | test_dirs
 $(EXE_TEST_FILES): %.test: %.o $(LIBS) | test_dirs
 	$(LINK)
 
-test-all: $(EXE_TEST_FILES)
-	./runtests.sh
+check-all: $(EXE_TEST_FILES)
+	./tests/runtests.sh
 
 .PHONY: test_dirs
 test_dirs:
@@ -138,4 +151,6 @@ $(D_C_FILES): build/%.d: src/%.c
 $(D_Y_FILES) $(D_RE_FILES): build/%.d: build/%.c
 	$(MAKE_DEPENDENCY_FILE)
 
+ifeq ($(SECOND_RUN),TRUE)
 -include $(ALL_D_FILES)
+endif

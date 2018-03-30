@@ -1,4 +1,4 @@
-#include "tiny_set.c"
+#include "collections/tiny_set.c"
 
 #include <stdio.h>
 #include <stdarg.h>

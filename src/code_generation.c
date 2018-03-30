@@ -242,6 +242,15 @@ is_in_register(size_t x, enum Register r) {
     exit(1);
 }
 
+/* ToDo: two address code should be changed in favour of three address code. 
+ * x = y + z can be compiled this way:
+ * 0) choose registers for x, y and z
+ * 1) emit mov rx, ry 
+ * 2) emit add rx, rz
+ * 3) ...
+ * 4) PROFIT
+ */
+
 extern void
 cg_emit_operation(enum OperationType operation, size_t x, size_t y) {
     enum Register rx, ry;

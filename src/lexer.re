@@ -1,3 +1,7 @@
+/* ToDo: autogenerate array of string representations of token types. This
+ * should be done in makefile. After generating parser we can add such array
+ * into .c file and add extern declaration into header. */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
